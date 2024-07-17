@@ -1,0 +1,7 @@
+dataset_name: "BPIC17"
+intermediate_output_directory: "output_intermediate"
+final_output_directory: "output_final"
+
+# Task cluster settings
+case_edges: "all"
+edge_min_freq: 0

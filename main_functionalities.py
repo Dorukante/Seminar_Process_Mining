@@ -3,15 +3,16 @@ from promg import OcedPg, SemanticHeader, DatasetDescriptions
 from promg.modules.db_management import DBManagement
 from promg.modules.task_identification import TaskIdentification
 
-from custom_modules.custom_modules.delay_analysis import PerformanceAnalyzeDelays
-from custom_modules.custom_modules.df_interactions import InferDFInteractions
-from custom_modules.custom_modules.discover_dfg import DiscoverDFG
+from modules.decomposition_actor_behavior.decomposition_actor_behavior import DecompositionActorBehavior
+from modules.custom_modules.delay_analysis import PerformanceAnalyzeDelays
+from modules.custom_modules.df_interactions import InferDFInteractions
+from modules.custom_modules.discover_dfg import DiscoverDFG
 
 
-def clear_db(db_connection, config):
+def clear_db(db_connection):
     print(Fore.RED + 'Clearing the database.' + Fore.RESET)
-    semantic_header = SemanticHeader.create_semantic_header(config=config)
-    db_manager = DBManagement(db_connection, semantic_header=semantic_header)
+
+    db_manager = DBManagement(db_connection)
     db_manager.clear_db(replace=True)
     db_manager.set_constraints()
 
@@ -85,7 +86,28 @@ def build_tasks(db_connection, config):
         resource="Resource",
         case="CaseAWO")
     task_identifier.identify_tasks()
-    task_identifier.aggregate_on_task_variant()
+    # task_identifier.aggregate_on_task_variant()
+
+
+def add_actor_behavior(db_connection, config, analysis_config):
+    semantic_header = SemanticHeader.create_semantic_header(config)
+    print(Fore.RED + 'Adding actor behavior.' + Fore.RESET)
+    decomposition_actor_behavior = DecompositionActorBehavior(db_connection=db_connection,
+                                                              semantic_header=semantic_header,
+                                                              dataset_name=analysis_config.dataset_name,
+                                                              resource="Resource", case="CaseAWO")
+    decomposition_actor_behavior.add_actor_behavior()
+
+
+def extract_decomposed_performance(db_connection, config, analysis_config):
+    semantic_header = SemanticHeader.create_semantic_header(config)
+    print(Fore.RED + 'Decomposing performance by actor behavior.' + Fore.RESET)
+    decomposition_actor_behavior = DecompositionActorBehavior(db_connection=db_connection,
+                                                              semantic_header=semantic_header,
+                                                              dataset_name=analysis_config.dataset_name,
+                                                              resource="Resource", case="CaseAWO")
+    decomposition_actor_behavior.extract_decomposed_performance_by_actor_behavior_per_edge(
+        case_edges=analysis_config.case_edges, edge_min_freq=analysis_config.edge_min_freq)
 
 
 def infer_delays(db_connection):
