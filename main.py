@@ -10,7 +10,7 @@ from analysis_configuration import AnalysisConfiguration
 analysis_config = AnalysisConfiguration()
 
 # step for adding actor behavior to case df-edges in the graph
-step_add_actor_behavior = False
+step_add_actor_behavior = True
 
 # step for extracting performance of case df-edges decomposed by actor behavior
 # can only be turned on if the above step has run
@@ -58,6 +58,6 @@ def main(config,
 
 if __name__ == "__main__":
     main(config=Configuration.init_conf_with_config_file(),
-         step_clear_db=False,
-         step_populate_graph=False,
-         step_build_tasks=False)
+         step_clear_db=True,
+         step_populate_graph=True,
+         step_build_tasks=True)

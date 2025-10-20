@@ -2,12 +2,12 @@
 db_name: "neo4j"
 uri: "bolt://localhost:7687"
 user: "neo4j"
-password: "bpic2017"
+password: "12345678"
 
 # Dataset information
-dataset_name: "BPIC17"
-semantic_header_path: "json_files/BPIC17.json"
-dataset_description_path: "json_files/BPIC17_DS.json"
+dataset_name: "BPIC15"
+semantic_header_path: "json_files/BPIC15.json"
+dataset_description_path: "json_files/BPIC15_DS.json"
 use_sample: false
 
 # Import settings
