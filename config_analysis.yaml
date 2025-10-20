@@ -1,4 +1,4 @@
-dataset_name: "BPIC17"
+dataset_name: "BPIC15"
 intermediate_output_directory: "output_intermediate"
 final_output_directory: "output_final"
 

@@ -1,6 +1,7 @@
 /data/
 /.idea/
 *.pyc
-*.csv
+/data/*.csv
+!*.csv
 /perf/
 /output_intermediate/
