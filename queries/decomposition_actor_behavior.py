@@ -119,7 +119,20 @@ class DecompositionActorBehaviorQueryLibrary:
                 "min_freq": min_freq
             }
         )
-
+    
+    @staticmethod
+    def q_get_all_df_edges_activity_lifecycle(case, min_freq):
+        query_str = '''
+                MATCH (e1:Event)-[df:$df_case]->(e2:Event)
+                WITH DISTINCT e1.activity AS activity1, e1.lifecycle AS lifecycle1, e2.activity AS activity2, 
+                    e2.lifecycle AS lifecycle2, count(*) AS count where count > $min_freq
+                RETURN activity1, lifecycle1, activity2, lifecycle2, count order by count desc
+                '''
+        return Query(query_str=query_str,
+                     template_string_parameters={
+                         "df_case": case.get_df_label(),
+                         "min_freq": min_freq
+                     })
     @staticmethod
     def q_get_all_actor_behavior_per_df(case, resource, edge_tuple):
         query_str = '''
@@ -142,6 +155,26 @@ class DecompositionActorBehaviorQueryLibrary:
                 "activity2": edge_tuple[1]
             }
         )
+
+    @staticmethod
+    def q_get_all_actor_behavior_per_df_bpic17(case, resource, edge_tuple):
+        query_str = '''
+            MATCH (e1:Event {activity: "$activity1", lifecycle:"$lifecycle1"})-[df:$df_case]->
+                (e2:Event {activity: "$activity2", lifecycle:"$lifecycle2"})
+            WITH e1.timestamp AS time, duration.inSeconds(e1.timestamp, e2.timestamp) AS duration, 
+                df.actor_behavior AS actor_behavior
+            RETURN time, duration, actor_behavior
+            '''
+        return Query(query_str=query_str,
+                     template_string_parameters={
+                         "resource_node_label": resource.type,
+                         "df_case": case.get_df_label(),
+                         "activity1": edge_tuple[0][0],
+                         "lifecycle1": edge_tuple[0][1],
+                         "activity2": edge_tuple[1][0],
+                         "lifecycle2": edge_tuple[1][1]
+                     })
+
     @staticmethod
     def q_get_continuation_per_df(case, resource, edge_tuple):
         query_str = '''
