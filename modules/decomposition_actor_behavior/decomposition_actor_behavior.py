@@ -32,7 +32,11 @@ class DecompositionActorBehavior:
         self.connection.exec_query(ql.q_add_actor_behavior_handover_deprioritized, **kwargs)
 
     def extract_decomposed_performance_by_actor_behavior_per_edge(self, case_edges, edge_min_freq: int = 1000,
-                                                                  time_unit: str = 'hours', agg_func=["mean"]):
+                                                                  time_unit: str = 'hours',
+                                                                  agg_func=None,
+                                                                  exclude_zero_duration: bool = True):
+        if agg_func is None:
+            agg_func = ["mean", "median", "min", "max", "std", "count"]
         if case_edges == 'all' and self.dataset_name == "BPIC17":
             self.case_edges = qp.parse_to_2d2tuple_list(
                 self.connection.exec_query(ql.q_get_all_df_edges_activity_lifecycle,
@@ -64,7 +68,11 @@ class DecompositionActorBehavior:
 
         if self.dataset_name == "BPIC17":
             for i, df_instances_per_edge in enumerate(list_df_instances_by_actor_behavior):
-                df_actor_behavior_agg = aggregate_actor_behavior(df_instances_per_edge, groupby, agg_func, time_unit)
+                df_actor_behavior_agg = aggregate_actor_behavior(df_instances_per_edge,
+                                                                 groupby,
+                                                                 agg_func,
+                                                                 time_unit,
+                                                                 exclude_zero_duration=exclude_zero_duration)
                 df_actor_behavior_agg = pd.concat([df_actor_behavior_agg],
                                                 keys=[f"{self.case_edges[i][1][0]}-{self.case_edges[i][1][1]}"],
                                                 names=["sink"])
@@ -77,7 +85,11 @@ class DecompositionActorBehavior:
                 f"{self.output_directory}\\performance_decomposed_by_{groupby_str}.csv")
         else:
             for i, df_instances_per_edge in enumerate(list_df_instances_by_actor_behavior):
-                df_actor_behavior_agg = aggregate_actor_behavior(df_instances_per_edge, groupby, agg_func, time_unit)
+                df_actor_behavior_agg = aggregate_actor_behavior(df_instances_per_edge,
+                                                                 groupby,
+                                                                 agg_func,
+                                                                 time_unit,
+                                                                 exclude_zero_duration=exclude_zero_duration)
 
                 source_activity, target_activity = self.case_edges[i]
                 df_actor_behavior_agg = pd.concat([df_actor_behavior_agg],
@@ -95,15 +107,53 @@ class DecompositionActorBehavior:
             )
 
 
-def aggregate_actor_behavior(df_to_aggregate, groupby, agg_func, time_unit):
-    total_count = 0.5 * len(df_to_aggregate)
-    df_aggregated = df_to_aggregate.groupby(groupby).agg(
-        {"actor_behavior": ["count", ("percentage", lambda x: x.count() / total_count)],
-         f"duration_{time_unit}": agg_func})
-    # df_aggregated[("actor_behavior", "percentage")] = df_aggregated[("actor_behavior", "percentage")] * 2
-    # df_aggregated[('actor_behavior', 'percentage')] = df_aggregated[('actor_behavior', 'count')] / df_aggregated[
-    #     ('actor_behavior', 'count')].sum()
-    return df_aggregated
+def aggregate_actor_behavior(df_to_aggregate, groupby, agg_func, time_unit, exclude_zero_duration=True):
+    duration_col = f"duration_{time_unit}"
+    df_filtered = df_to_aggregate.copy()
+
+    if isinstance(agg_func, str) or not hasattr(agg_func, "__iter__"):
+        agg_funcs = [agg_func] if agg_func is not None else []
+    else:
+        agg_funcs = list(agg_func)
+
+    if exclude_zero_duration and duration_col in df_filtered.columns:
+        df_filtered = df_filtered[df_filtered[duration_col].fillna(0) > 0]
+
+    if df_filtered.empty:
+        column_tuples = [("actor_behavior", "count"), ("actor_behavior", "percentage")]
+        column_tuples.extend((duration_col, str(func)) for func in agg_funcs)
+        columns = pd.MultiIndex.from_tuples(column_tuples)
+        return pd.DataFrame(columns=columns)
+
+    total_count = len(df_filtered) / 2
+    total_count = total_count if total_count else 1
+
+    counts = df_filtered.groupby(groupby)["actor_behavior"].count()
+    percentage = counts / total_count if total_count else counts * 0
+
+    duration_agg = (
+        df_filtered.groupby(groupby)[duration_col].agg(agg_funcs) if agg_funcs else pd.DataFrame()
+    )
+    if isinstance(duration_agg, pd.Series):
+        duration_agg = duration_agg.to_frame()
+
+    counts_df = counts.to_frame()
+    counts_df.columns = pd.MultiIndex.from_tuples([("actor_behavior", "count")])
+
+    percentage_df = percentage.to_frame()
+    percentage_df.columns = pd.MultiIndex.from_tuples([("actor_behavior", "percentage")])
+
+    if not duration_agg.empty:
+        duration_agg.columns = pd.MultiIndex.from_tuples(
+            [(duration_col, str(col)) for col in duration_agg.columns]
+        )
+
+    frames = [counts_df, percentage_df]
+    if not duration_agg.empty:
+        frames.append(duration_agg)
+
+    result = pd.concat(frames, axis=1)
+    return result
 
 
 # def aggregate_actor_behavior(df_to_aggregate, groupby, agg_func, time_unit):
