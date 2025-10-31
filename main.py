@@ -1,13 +1,53 @@
 from datetime import datetime
+import time
+from pathlib import Path
+
 from promg import DatabaseConnection
 from promg import Configuration
 from promg import Performance
+from promg.modules.data_importer import Importer as _PromgImporter
+from promg.data_managers.semantic_header import ConstructedNodes as _PromgConstructedNodes
 
 from main_functionalities import clear_db, load_data, transform_data, build_tasks, \
     print_statistics, add_actor_behavior, extract_decomposed_performance
 from analysis_configuration import AnalysisConfiguration
 
 analysis_config = AnalysisConfiguration()
+
+
+def _delete_log_grouped_by_labels_with_retry(self, file_name):
+    """
+    Retry deletion of temporary CSV files to tolerate Neo4j keeping locks on Windows.
+    """
+    path = Path(self.get_import_directory(), file_name)
+    if not path.exists():
+        return
+
+    for attempt in range(5):
+        try:
+            path.unlink()
+            return
+        except PermissionError:
+            time.sleep(0.2 * (attempt + 1))
+
+    try:
+        path.unlink()
+    except PermissionError:
+        print(f"Warning: could not delete temporary import file {path}.")
+
+
+_PromgImporter._delete_log_grouped_by_labels = _delete_log_grouped_by_labels_with_retry
+
+
+def _get_df_ti_label(self):
+    """
+    Provide the DF_TI label used by task-instance relations (needed for handover classification).
+    """
+    return f"DF_TI_{self.type}"
+
+
+if not hasattr(_PromgConstructedNodes, "get_df_ti_label"):
+    _PromgConstructedNodes.get_df_ti_label = _get_df_ti_label
 
 # step for adding actor behavior to case df-edges in the graph
 step_add_actor_behavior = True

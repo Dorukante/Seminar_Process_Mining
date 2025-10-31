@@ -8,6 +8,10 @@ password: "12345678"
 dataset_name: "BPIC15"
 semantic_header_path: "json_files/BPIC15.json"
 dataset_description_path: "json_files/BPIC15_DS.json"
+
+# dataset_name: "BPIC17"
+# semantic_header_path: "json_files/BPIC17.json"
+# dataset_description_path: "json_files/BPIC17_DS.json"
 use_sample: false
 
 # Import settings
